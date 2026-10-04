@@ -1,63 +1,126 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+function PracticeTracker({
+  solved,
+  onSolve,
+  onReset,
+}: {
+  solved: number;
+  onSolve: () => void;
+  onReset: () => void;
+}) {
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View style={styles.card}>
+      <Text style={styles.solved}>Solved: {solved}</Text>
+
+      <View style={styles.buttonRow}>
+        <Pressable style={styles.button} onPress={onSolve}>
+          <Text style={styles.buttonText}>Solve +1</Text>
+        </Pressable>
+
+        <Pressable style={styles.resetButton} onPress={onReset}>
+          <Text style={styles.buttonText}>Reset</Text>
+        </Pressable>
+      </View>
+
+      {solved >= 5 && (
+        <Text style={styles.greatJob}>Great job!</Text>
+      )}
+    </View>
   );
 }
 
-export default function HomeScreen() {
+function useStopwatch(isRunning: boolean) {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  return seconds;
+}
+
+function Stopwatch({
+  seconds,
+  isRunning,
+}: {
+  seconds: number;
+  isRunning: boolean;
+}) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  const time = `${String(minutes).padStart(2, '0')}:${String(
+    remainingSeconds
+  ).padStart(2, '0')}`;
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.card}>
+      <Text style={styles.timer}>{time}</Text>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <Text style={styles.status}>
+        {isRunning ? 'Running...' : 'Paused'}
+      </Text>
+    </View>
+  );
+}
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+export default function LabScreen() {
+  const [solved, setSolved] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+  const seconds = useStopwatch(isRunning);
+
+  const handleSolve = () => {
+    setSolved((s) => s + 1);
+  };
+
+  const handleReset = () => {
+    setSolved(0);
+  };
+
+  const handleStart = () => {
+    setIsRunning(true);
+  };
+
+  const handleStop = () => {
+    setIsRunning(false);
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Lab Practice Tracker</Text>
+
+      <PracticeTracker
+        solved={solved}
+        onSolve={handleSolve}
+        onReset={handleReset}
+      />
+
+      <Stopwatch
+        seconds={seconds}
+        isRunning={isRunning}
+      />
+
+      <View style={styles.buttonRow}>
+        <Pressable style={styles.startButton} onPress={handleStart}>
+          <Text style={styles.buttonText}>Start</Text>
+        </Pressable>
+
+        <Pressable style={styles.stopButton} onPress={handleStop}>
+          <Text style={styles.buttonText}>Stop</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -65,34 +128,84 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
+
   title: {
-    textAlign: 'center',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 25,
   },
-  code: {
-    textTransform: 'uppercase',
+
+  card: {
+    width: '100%',
+    padding: 20,
+    marginBottom: 15,
+    borderRadius: 15,
+    backgroundColor: 'white',
+    alignItems: 'center',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+
+  solved: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+
+  timer: {
+    fontSize: 45,
+    fontWeight: 'bold',
+  },
+
+  status: {
+    fontSize: 20,
+    marginTop: 5,
+  },
+
+  greatJob: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 15,
+  },
+
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  button: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+
+  resetButton: {
+    backgroundColor: '#777',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+
+  startButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+
+  stopButton: {
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
